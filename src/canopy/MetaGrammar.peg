@@ -1,0 +1,103 @@
+
+grammar canopy.MetaGrammar
+
+# ==============================================================================
+
+grammar               <-  _* grammar_name (_* rule)+ _*
+                          %grammar
+
+grammar_name          <-  `grammar` ":"? _+ id:object_identifier
+
+rule                  <-  identifier assignment parsing_expression %rule
+
+assignment            <-  _+ "<-" _+
+
+# ==============================================================================
+
+_                     <-  [ \t\n\r] / comment
+
+comment               <-  "#" [^\n]*
+
+object_identifier     <-  identifier ("." identifier)*
+
+identifier            <-  [a-zA-Z_] [a-zA-Z0-9_]*
+
+# ==============================================================================
+
+parsing_expression    <-  choice
+                       /  choice_part
+
+choice_part           <-  action_expression
+                       /  typed_expression
+                       /  sequence
+                       /  sequence_element
+
+sequence_element      <-  predicated_atom
+                       /  repeated_atom
+                       /  maybe_atom
+                       /  atom
+
+atom                  <-  reference
+                       /  terminal
+                       /  paren_expression
+
+terminal              <-  literal_string
+                       /  ci_string
+                       /  char_class
+                       /  any_char
+
+# ==============================================================================
+
+choice                <-  choice_part (_* "/" _* expr:choice_part)+ %choice
+
+# ==============================================================================
+
+action_expression     <-  actionable _+ action_tag %action
+
+actionable            <-  sequence
+                       /  repeated_atom
+                       /  terminal
+                       /  "(" _* actionable _* ")" %paren_expr
+
+action_tag            <-  "%" id:identifier
+
+# ==============================================================================
+
+typed_expression      <-  typable _+ type_tag %extension
+
+typable               <-  sequence
+                       /  sequence_element
+
+type_tag              <-  "<" id:object_identifier ">"
+
+# ==============================================================================
+
+sequence              <-  sequence_part (_+ expr:sequence_part)+ %sequence
+
+sequence_part         <-  mute? label? sequence_element %sequence_part
+
+mute                  <-  "@"
+
+label                 <-  id:identifier ":"
+
+# ==============================================================================
+
+paren_expression      <-  "(" _* parsing_expression _* ")" %paren_expr
+
+predicated_atom       <-  ("&" / "!") _* atom %predicate
+
+repeated_atom         <-  atom _* ("*" / "+") %repeat
+
+maybe_atom            <-  atom _* "?" %maybe
+
+reference             <-  identifier !assignment %reference
+
+literal_string        <-  '"' ("\\" . / [^"])* '"' %string
+                           /  "'" ("\\" . / [^'])* "'" %string
+
+ci_string             <-  "`" ("\\" . / [^`])* "`" %ci_string
+
+char_class            <-  "[" "^"? ("\\" . / [^\]])+ "]" %char_class
+
+any_char              <-  "." %any_char
+
